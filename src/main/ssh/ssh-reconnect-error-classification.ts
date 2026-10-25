@@ -70,6 +70,18 @@ export function isSystemSshFallbackError(err: Error): boolean {
   return err.message.includes('EHOSTUNREACH') || err.message.includes('ENETUNREACH')
 }
 
+/** ssh2 has no certificate host key support, so a server offering only `*-cert-v01` keys cannot negotiate with it. */
+const CERTIFICATE_ONLY_HOST_KEY_ERRORS = ['no matching host key format']
+
+/**
+ * ssh2's kex aborts when the server's host key algorithms do not intersect its own list. Certificate-only
+ * servers produce exactly that, and system OpenSSH handles them, so treat it as a transport capability gap.
+ */
+export function isHostKeyAlgorithmSystemSshFallbackCandidate(err: Error): boolean {
+  const msg = err.message.toLowerCase()
+  return CERTIFICATE_ONLY_HOST_KEY_ERRORS.some((fragment) => msg.includes(fragment))
+}
+
 // ssh2 lacks GSSAPI; use system SSH for config-enabled Kerberos only after auth-shaped failures, preserving network retry semantics.
 export function isGssapiSystemSshFallbackCandidate(
   err: Error,

@@ -4,6 +4,7 @@ import {
   isDefiniteSystemSshHostFailure,
   isTransientReconnectError,
   isSystemSshFallbackError,
+  isHostKeyAlgorithmSystemSshFallbackCandidate,
   isGssapiSystemSshFallbackCandidate,
   isAuthError,
   isAgentFallbackError
@@ -209,6 +210,29 @@ describe('isSystemSshFallbackError', () => {
 
     expect(isSystemSshFallbackError(refused)).toBe(false)
     expect(isSystemSshFallbackError(new Error('connect ETIMEDOUT 1.2.3.4:22'))).toBe(false)
+  })
+})
+
+describe('isHostKeyAlgorithmSystemSshFallbackCandidate', () => {
+  it('returns true for the kex algorithm mismatch certificate-only servers produce', () => {
+    expect(
+      isHostKeyAlgorithmSystemSshFallbackCandidate(
+        new Error('Handshake failed: no matching host key format')
+      )
+    ).toBe(true)
+  })
+
+  it('returns false for unrelated handshake failures', () => {
+    expect(
+      isHostKeyAlgorithmSystemSshFallbackCandidate(
+        new Error('Timed out while waiting for handshake')
+      )
+    ).toBe(false)
+    expect(
+      isHostKeyAlgorithmSystemSshFallbackCandidate(
+        new Error('All configured authentication methods failed')
+      )
+    ).toBe(false)
   })
 })
 

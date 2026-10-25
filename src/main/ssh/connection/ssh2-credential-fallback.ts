@@ -8,6 +8,7 @@ import type { resolveEffectiveProxy } from '../ssh-proxy-command'
 import {
   isAgentFallbackError,
   isGssapiSystemSshFallbackCandidate,
+  isHostKeyAlgorithmSystemSshFallbackCandidate,
   isPassphraseError,
   isSystemSshFallbackError
 } from '../ssh-reconnect-error-classification'
@@ -99,10 +100,11 @@ export async function recoverFailedSsh2Attempt(
     throw err
   }
 
-  if (isSystemSshFallbackError(err)) {
+  if (isSystemSshFallbackError(err) || isHostKeyAlgorithmSystemSshFallbackCandidate(err)) {
     host.killProxyIfCurrent()
     try {
-      // Why: on macOS, per-app network policy can block Orca's direct TCP socket while the system OpenSSH binary is still allowed.
+      // Why: ssh2 cannot negotiate certificate host keys, and the reachability codes above cover local network
+      // policy blocks. System OpenSSH handles both, so retry there before reporting a capability failure.
       await host.probeSystemSsh(resolved)
       return
     } catch {
